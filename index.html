@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RecallForge</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      height: 100%;
+    }
+
+    spline-viewer {
+      position: fixed;
+      top: 0;
+      left: 300px; /* Moved 300px right */
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    spline-viewer::part(canvas) {
+      height: 100vh !important;
+    }
+
+    .section-3d {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -2;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1s ease;
+    }
+
+    nav a {
+      position: relative;
+      font-size: 1.1rem;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      text-decoration: none;
+      color: white;
+      transition: all 0.3s ease;
+    }
+
+    nav a::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 0;
+      height: 3px;
+      background-color: #9f79ff;
+      transition: width 0.3s ease;
+    }
+
+    nav a:hover::after,
+    nav a.active::after {
+      width: 100%;
+    }
+
+    nav a:hover,
+    nav a.active {
+      color: #cfcfcf;
+      transform: scale(1.05);
+    }
+
+    .app-section {
+      display: none;
+      padding: 5rem 2rem;
+      background: #111;
+      margin-top: 3rem;
+      border-top: 2px solid #222;
+      min-height: 100vh;
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+
+    .app-section.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .app-section h2 {
+      font-size: 2.5rem;
+      color: #fff;
+      margin-bottom: 1.5rem;
+    }
+
+    .app-section p {
+      color: #aaa;
+      font-size: 1.1rem;
+      max-width: 50rem;
+    }
+
+    /* Section-specific content styling */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .deck-card {
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 1.5rem;
+      border: 1px solid #333;
+      transition: all 0.3s ease;
+    }
+
+    .deck-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+      border-color: #9f79ff;
+    }
+
+    .deck-card h3 {
+      color: #fff;
+      margin-top: 0;
+    }
+
+    .deck-card p {
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    .stats-charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+
+    .chart-container {
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 1.5rem;
+      border: 1px solid #333;
+      height: 250px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .setting-block {
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 1.5rem;
+      border: 1px solid #333;
+    }
+
+    .setting-block h3 {
+      color: #fff;
+      margin-top: 0;
+    }
+
+    .faq-container {
+      margin-top: 2rem;
+    }
+
+    .faq-item {
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 1.5rem;
+      border: 1px solid #333;
+      margin-bottom: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .faq-item:hover {
+      border-color: #9f79ff;
+    }
+
+    .faq-question {
+      color: #fff;
+      font-weight: 600;
+      font-size: 1.1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .faq-answer {
+      color: #aaa;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .faq-item.open .faq-answer {
+      display: block;
+    }
+
+    /* Navigation indicator animation */
+    .nav-indicator {
+      position: absolute;
+      bottom: -5px;
+      height: 3px;
+      background-color: #9f79ff;
+      transition: all 0.3s ease;
+    }
+
+    /* Added fade transition for main content */
+    .content {
+      transition: opacity 0.5s ease;
+    }
+    
+    .content.faded {
+      opacity: 0.2;
+    }
+
+    /* Page transition overlay */
+    .page-transition {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .page-transition.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .loader {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      border-top-color: #9f79ff;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <spline-viewer class="robot-3d" url="https://prod.spline.design/VwO2NnZkPHmAUHcx/scene.splinecode" watermark="false"></spline-viewer>
+  <spline-viewer class="section-3d" id="decks-3d" url="https://prod.spline.design/KYqiwCGkRnGrThXH/scene.splinecode" watermark="false"></spline-viewer>
+  <spline-viewer class="section-3d" id="stats-3d" url="https://prod.spline.design/dOSmAoDcl9n0tBo0/scene.splinecode" watermark="false"></spline-viewer>
+  <spline-viewer class="section-3d" id="settings-3d" url="https://prod.spline.design/w3APDapXW22Z7fmn/scene.splinecode" watermark="false"></spline-viewer>
+  <spline-viewer class="section-3d" id="help-3d" url="https://prod.spline.design/Z7KwV8w1vcdw0hrB/scene.splinecode" watermark="false"></spline-viewer>
+
+  <!-- Page transition overlay -->
+  <div class="page-transition">
+    <div class="loader"></div>
+  </div>
+
+  <div class="container">
+    <header>
+      <h1 data-aos="fade-down" data-aos-duration="1500" class="logo">RecallForge</h1>
+      <nav>
+        <div class="nav-indicator"></div>
+        <a id="nav-decks" data-aos="fade-down" data-aos-duration="1700" href="#">Decks</a>
+        <a id="nav-stats" data-aos="fade-down" data-aos-duration="2000" href="#">Stats</a>
+        <a id="nav-settings" data-aos="fade-down" data-aos-duration="2500" href="#">Settings</a>
+        <a id="nav-help" data-aos="fade-down" data-aos-duration="3000" href="#">Help</a>
+      </nav>
+      <button data-aos="fade-down" data-aos-duration="1500" class="btn-signing">Log In</button>
+    </header>
+
+    <main>
+      <div class="content">
+        <div data-aos="fade-zoom-in" data-aos-easing="ease-in-back" data-aos-delay="300" data-aos-offset="0" data-aos-duration="1500" class="tag-box">
+          <div class="tag">SPACED REPETITION</div>
+        </div>
+        <h1 data-aos="fade-zoom-in" data-aos-easing="ease-in-back" data-aos-delay="300" data-aos-offset="0" data-aos-duration="2000">Flashcard Trainer</h1>
+        <p data-aos="fade-zoom-in" data-aos-easing="ease-in-back" data-aos-delay="300" data-aos-offset="0" data-aos-duration="2500" class="description">
+          Improve memory retention with spaced repetition flashcards. Mark your answers to track progress in real time.
+        </p>
+        <div class="flashcard-box" data-aos="fade-up" data-aos-delay="400" data-aos-duration="2500">
+          <div class="flashcard" onclick="this.classList.toggle('flipped')">
+            <div class="front">What is the capital of France?</div>
+            <div class="back">Paris</div>
+          </div>
+          <div class="buttons">
+            <button onclick="markRemembered()" class="btn-get-started">Remembered</button>
+            <button onclick="markForgotten()" class="btn-signing-main">Forgot</button>
+          </div>
+        </div>
+        <div class="stats">
+          Reviewed: <span id="reviewed">0</span> |
+          Remembered: <span id="remembered">0</span> |
+          Forgotten: <span id="forgotten">0</span>
+        </div>
+      </div>
+
+      <section id="section-decks" class="app-section">
+        <h2>Your Memory Vault</h2>
+        <p>Create, edit, and organize flashcard decks. Future updates will allow tags, color coding, and progress tracking per vault.</p>
+        <div class="card-grid">
+          <div class="deck-card">
+            <h3>Spanish Vocabulary</h3>
+            <p>120 cards</p>
+            <p>Last studied: Today</p>
+          </div>
+          <div class="deck-card">
+            <h3>JavaScript Basics</h3>
+            <p>75 cards</p>
+            <p>Last studied: Yesterday</p>
+          </div>
+          <div class="deck-card">
+            <h3>World Capitals</h3>
+            <p>195 cards</p>
+            <p>Last studied: 3 days ago</p>
+          </div>
+          <div class="deck-card">
+            <h3>+ Create New Deck</h3>
+            <p>Start building your knowledge</p>
+          </div>
+        </div>
+      </section>
+      
+      <section id="section-stats" class="app-section">
+        <h2>Insight Hub</h2>
+        <p>Track your memory performance, daily streaks, forgotten vs. remembered ratios, and more insights here.</p>
+        <div class="stats-charts">
+          <div class="chart-container">
+            <p>Daily Performance Chart</p>
+          </div>
+          <div class="chart-container">
+            <p>Memory Retention Rate</p>
+          </div>
+          <div class="chart-container">
+            <p>Study Time Distribution</p>
+          </div>
+          <div class="chart-container">
+            <p>Learning Curve Analysis</p>
+          </div>
+        </div>
+      </section>
+      
+      <section id="section-settings" class="app-section">
+        <h2>Control Center</h2>
+        <p>Customize themes, notification preferences, study reminders, and data export options.</p>
+        <div class="settings-grid">
+          <div class="setting-block">
+            <h3>App Theme</h3>
+            <input type="radio" id="theme-dark" name="theme" checked> <label for="theme-dark">Dark Mode</label><br>
+            <input type="radio" id="theme-light" name="theme"> <label for="theme-light">Light Mode</label><br>
+            <input type="radio" id="theme-auto" name="theme"> <label for="theme-auto">System Default</label>
+          </div>
+          <div class="setting-block">
+            <h3>Study Reminders</h3>
+            <input type="checkbox" id="reminder-daily" checked> <label for="reminder-daily">Daily Reminder</label><br>
+            <input type="checkbox" id="reminder-weekend"> <label for="reminder-weekend">Weekend Boost</label><br>
+            <input type="checkbox" id="reminder-streak"> <label for="reminder-streak">Streak Protection</label>
+          </div>
+          <div class="setting-block">
+            <h3>Data Management</h3>
+            <button>Export All Data</button><br><br>
+            <button>Backup Settings</button><br><br>
+            <button>Sync Across Devices</button>
+          </div>
+          <div class="setting-block">
+            <h3>Algorithm Settings</h3>
+            <label for="difficulty">Learning Difficulty:</label><br>
+            <input type="range" id="difficulty" min="1" max="5" value="3"><br>
+            <label for="interval">Review Interval Scaling:</label><br>
+            <input type="range" id="interval" min="1" max="5" value="3">
+          </div>
+        </div>
+      </section>
+      
+      <section id="section-help" class="app-section">
+        <h2>Support Nexus</h2>
+        <p>Find documentation, FAQs, contact information, and tutorials to assist your learning journey.</p>
+        <div class="faq-container">
+          <div class="faq-item">
+            <div class="faq-question">How does spaced repetition work? <span class="toggle">+</span></div>
+            <div class="faq-answer">Spaced repetition is a learning technique that involves reviewing information at gradually increasing intervals. RecallForge schedules cards based on how well you know them - cards you find difficult appear more frequently than ones you know well.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question">Can I import existing flashcards? <span class="toggle">+</span></div>
+            <div class="faq-answer">Yes! RecallForge supports importing flashcards from CSV files, Anki decks, and several other popular flashcard formats. Go to Decks > Import to get started.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question">How do I track my progress? <span class="toggle">+</span></div>
+            <div class="faq-answer">The Stats section provides detailed analytics on your learning progress, including retention rates, study patterns, and predicted memory strength for different categories.</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-question">Is there a mobile app available? <span class="toggle">+</span></div>
+            <div class="faq-answer">RecallForge is available on iOS and Android. Your account synchronizes across all devices automatically when signed in.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.96/build/spline-viewer.js"></script>
+  <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+  <script>
+    AOS.init();
+
+    let reviewed = 0;
+    let remembered = 0;
+    let forgotten = 0;
+
+    function updateStats() {
+      document.getElementById("reviewed").innerText = reviewed;
+      document.getElementById("remembered").innerText = remembered;
+      document.getElementById("forgotten").innerText = forgotten;
+    }
+
+    function markRemembered() {
+      reviewed++;
+      remembered++;
+      updateStats();
+      nextCard();
+    }
+
+    function markForgotten() {
+      reviewed++;
+      forgotten++;
+      updateStats();
+      nextCard();
+    }
+
+    // Enhanced navigation system
+    const sections = ['decks', 'stats', 'settings', 'help'];
+    const mainContent = document.querySelector('.content');
+    const pageTransition = document.querySelector('.page-transition');
+    const navLinks = document.querySelectorAll('nav a');
+    
+    // Initialize FAQ toggles
+    document.querySelectorAll('.faq-item').forEach(item => {
+      item.addEventListener('click', () => {
+        item.classList.toggle('open');
+        const toggle = item.querySelector('.toggle');
+        toggle.textContent = item.classList.contains('open') ? '-' : '+';
+      });
+    });
+
+    // Navigation handling
+    sections.forEach(section => {
+      document.getElementById(`nav-${section}`).addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        // Add active class to clicked nav item
+        navLinks.forEach(link => link.classList.remove('active'));
+        e.target.classList.add('active');
+        
+        // Show transition screen
+        pageTransition.classList.add('active');
+        
+        // Fade the main content
+        mainContent.classList.add('faded');
+        
+        setTimeout(() => {
+          // Hide all sections and 3D elements
+          sections.forEach(s => {
+            const sectionElement = document.getElementById(`section-${s}`);
+            sectionElement.style.display = 'none';
+            sectionElement.classList.remove('active');
+            document.getElementById(`${s}-3d`).style.opacity = 0;
+          });
+          
+          // After a slight delay, show the selected section
+          setTimeout(() => {
+            // Show selected section and 3D background
+            const selectedSection = document.getElementById(`section-${section}`);
+            selectedSection.style.display = 'block';
+            
+            // Force reflow to enable transition
+            selectedSection.offsetHeight;
+            
+            selectedSection.classList.add('active');
+            document.getElementById(`${section}-3d`).style.opacity = 1;
+            
+            // Hide transition screen
+            pageTransition.classList.remove('active');
+            
+            // Un-fade the main content with reduced opacity
+            mainContent.classList.remove('faded');
+            
+            // Scroll to top smoothly
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }, 300);
+        }, 500);
+      });
+    });
+  </script>
+  <script src="script.js" defer></script>
+
+</body>
+</html>
